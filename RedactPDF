@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document Quick Redactor</title>
+    <title>Hospital Document Advanced Redactor</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
@@ -15,14 +15,14 @@
 <body class="bg-slate-900 text-slate-100 min-h-screen p-6 flex flex-col items-center">
 
     <div class="bg-slate-800 p-6 rounded-xl shadow-xl border border-slate-700 w-full max-w-4xl text-center mb-6">
-        <h1 class="text-2xl font-bold text-blue-400">🛡️ Advanced Redactor</h1>
-        <p class="text-xs text-slate-400 mt-1">Mouse ne drag karun blackout kara. <b>Kontahi box delete karnyasaathi tyavar double-click kara!</b></p>
+        <h1 class="text-2xl font-bold text-blue-400">🛡️ Hospital Document Visual Redactor</h1>
+        <p class="text-xs text-slate-400 mt-1">Mouse ne drag karun sensitive data blackout kara. <b>Kontahi box kadhnyasathi direct tyavar click kara!</b></p>
         
         <div class="mt-4 flex flex-wrap justify-center items-center gap-4">
             <input type="file" id="pdfInput" accept=".pdf" class="text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-slate-700 file:text-blue-400 hover:file:bg-slate-600 cursor-pointer"/>
             
             <button id="clearBtn" class="bg-red-600 hover:bg-red-500 text-white font-semibold py-2 px-4 rounded-lg transition duration-200 shadow-md hidden">
-                🗑️ Clear All Boxes
+                🗑️ Clear All
             </button>
             <button id="downloadBtn" class="bg-green-600 hover:bg-green-500 text-white font-semibold py-2 px-6 rounded-lg transition duration-200 shadow-md hidden">
                 📥 Modified PDF Download
@@ -37,8 +37,8 @@
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
         let originalPdfBytes = null;
-        let redactionsPerPage = {}; // Stores boxes drawn coordinates per page
-        let canvasRenderers = {}; // Stores canvas reference to redraw dynamically
+        let redactionsPerPage = {}; 
+        let canvasRenderers = {}; 
 
         document.getElementById('pdfInput').addEventListener('change', async (e) => {
             const file = e.target.files[0];
@@ -46,17 +46,17 @@
 
             const status = document.getElementById('status');
             const viewer = document.getElementById('pdfViewer');
-            viewer.innerHTML = ''; // Reset viewer
+            viewer.innerHTML = ''; 
             redactionsPerPage = {};
             canvasRenderers = {};
 
-            status.innerText = "⏳ PDF Open hot aahe...";
+            status.innerText = "⏳ PDF Document Open hot aahe...";
 
             try {
                 originalPdfBytes = await file.arrayBuffer();
                 const pdfJsDoc = await pdfjsLib.getDocument({ data: originalPdfBytes }).promise;
                 
-                status.innerText = `📄 Total ${pdfJsDoc.numPages} Pages load zale. Chukun banलेला box kaadhnyasathi tyavar double-click kara.`;
+                status.innerText = `📄 Total ${pdfJsDoc.numPages} Pages load zale. Chukicha box kadhnyasathi direct tyavar single click kara.`;
                 
                 document.getElementById('downloadBtn').classList.remove('hidden');
                 document.getElementById('clearBtn').classList.remove('hidden');
@@ -65,7 +65,7 @@
                     redactionsPerPage[pageNum] = [];
                     
                     const wrapper = document.createElement('div');
-                    wrapper.className = 'canvas-container border-2 border-slate-700 bg-white shadow-lg rounded mb-4';
+                    wrapper.className = 'canvas-container border-2 border-slate-700 bg-white shadow-lg rounded';
 
                     const pdfCanvas = document.createElement('canvas');
                     const drawCanvas = document.createElement('canvas');
@@ -89,40 +89,39 @@
                     await jsPage.render({ canvasContext: ctx, viewport: viewport }).promise;
 
                     let isDrawing = false;
+                    let dragged = false;
                     let startX, startY;
 
-                    // Mouse down sathi check
                     drawCanvas.addEventListener('mousedown', (e) => {
                         isDrawing = true;
+                        dragged = false;
                         const rect = drawCanvas.getBoundingClientRect();
                         startX = e.clientX - rect.left;
                         startY = e.clientY - rect.top;
                     });
 
-                    // Live drawing preview tracking
                     drawCanvas.addEventListener('mousemove', (e) => {
                         if (!isDrawing) return;
+                        dragged = true;
                         const rect = drawCanvas.getBoundingClientRect();
                         const currentX = e.clientX - rect.left;
                         const currentY = e.clientY - rect.top;
 
                         dCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
                         
-                        // Redraw confirmed blocks
                         redactionsPerPage[pageNum].forEach(box => {
                             dCtx.fillStyle = 'black';
                             dCtx.fillRect(box.x, box.y, box.w, box.h);
                         });
 
-                        // Transparency current preview
                         dCtx.fillStyle = 'rgba(0, 0, 0, 0.6)';
                         dCtx.fillRect(startX, startY, currentX - startX, currentY - startY);
                     });
 
-                    // Mouse Release to save coordinates
                     drawCanvas.addEventListener('mouseup', (e) => {
                         if (!isDrawing) return;
                         isDrawing = false;
+                        
                         const rect = drawCanvas.getBoundingClientRect();
                         const endX = e.clientX - rect.left;
                         const endY = e.clientY - rect.top;
@@ -132,44 +131,38 @@
                         const boxW = Math.abs(endX - startX);
                         const boxH = Math.abs(endY - startY);
 
-                        // Only save if it's a real box drag, not a single tap click
-                        if (boxW > 5 && boxH > 5) {
+                        // Jar mouse drag kela asel tarch navin box save hoto
+                        if (dragged && boxW > 6 && boxH > 6) {
                             redactionsPerPage[pageNum].push({ x: boxX, y: boxY, w: boxW, h: boxH, scale: 1.5 });
-                        }
-
-                        redrawPageCanvas(pageNum);
-                    });
-
-                    // NEW FEATURE: Double-click to select and delete box
-                    drawCanvas.addEventListener('dblclick', (e) => {
-                        const rect = drawCanvas.getBoundingClientRect();
-                        const clickX = e.clientX - rect.left;
-                        const clickY = e.clientY - rect.top;
-
-                        // Check if click position falls inside any existing box coordinates
-                        const originalLength = redactionsPerPage[pageNum].length;
-                        redactionsPerPage[pageNum] = redactionsPerPage[pageNum].filter(box => {
-                            const insideX = clickX >= box.x && clickX <= (box.x + box.w);
-                            const insideY = clickY >= box.y && clickY <= (box.y + box.h);
-                            return !(insideX && insideY); // filter out if clicked inside
-                        });
-
-                        if (redactionsPerPage[pageNum].length < originalLength) {
-                            document.getElementById('status').innerText = "🎯 Target kelela block select houn delete zala!";
                             redrawPageCanvas(pageNum);
+                        } else if (!dragged) {
+                            // OPTION SOLVED: Single click selection check to delete box
+                            const clickX = startX;
+                            const clickY = startY;
+                            const originalLength = redactionsPerPage[pageNum].length;
+
+                            redactionsPerPage[pageNum] = redactionsPerPage[pageNum].filter(box => {
+                                const matchX = clickX >= box.x && clickX <= (box.x + box.w);
+                                const matchY = clickY >= box.y && clickY <= (box.y + box.h);
+                                return !(matchX && matchY); 
+                            });
+
+                            if (redactionsPerPage[pageNum].length < originalLength) {
+                                document.getElementById('status').innerText = "🎯 Select kelela blackout box remove kela!";
+                                redrawPageCanvas(pageNum);
+                            }
                         }
                     });
                 }
             } catch (err) {
                 console.error(err);
-                status.innerText = "❌ PDF loading issue. Format check kara.";
+                status.innerText = "❌ PDF Parsing fail.";
             }
         });
 
         function redrawPageCanvas(pageNum) {
             const dCtx = canvasRenderers[pageNum];
             if (!dCtx) return;
-            
             dCtx.clearRect(0, 0, dCtx.canvas.width, dCtx.canvas.height);
             redactionsPerPage[pageNum].forEach(box => {
                 dCtx.fillStyle = 'black';
@@ -177,21 +170,19 @@
             });
         }
 
-        // Reset workspace
         document.getElementById('clearBtn').addEventListener('click', () => {
             if (confirm("Purn page che boxes delete karayche aahet ka?")) {
                 Object.keys(redactionsPerPage).forEach(pageNum => {
                     redactionsPerPage[pageNum] = [];
                     redrawPageCanvas(pageNum);
                 });
-                document.getElementById('status').innerText = "🗑️ Workspace completely clear kela!";
+                document.getElementById('status').innerText = "🗑️ Workspace cleared!";
             }
         });
 
-        // Save PDF compiler matrix
         document.getElementById('downloadBtn').addEventListener('click', async () => {
             const status = document.getElementById('status');
-            status.innerText = "⏳ PDF file generate hot aahe...";
+            status.innerText = "⏳ PDF processing suru aahe...";
 
             try {
                 const pdfLibDoc = await PDFLib.PDFDocument.load(originalPdfBytes);
@@ -223,12 +214,12 @@
                 const blob = new Blob([finalPdfBytes], { type: "application/pdf" });
                 const link = document.createElement('a');
                 link.href = URL.createObjectURL(blob);
-                link.download = "Redacted_Document.pdf";
+                link.download = "Final_Redacted_Report.pdf";
                 link.click();
-                status.innerText = "✅ Modified File successfully download zali!";
+                status.innerText = "✅ File successfully download zali!";
             } catch (err) {
                 console.error(err);
-                status.innerText = "❌ Final saving failed.";
+                status.innerText = "❌ Download link generation fail.";
             }
         });
     </script>
